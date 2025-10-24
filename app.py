@@ -26,11 +26,10 @@ client = OpenAI(api_key=OPENAI_KEY)
 # HELPERS
 # ------------------------------------------
 def clean_ai_output(text: str) -> str:
-    """Clean unwanted artifacts like 'Tailored CV' or markdown lines."""
+    """Clean unwanted artifacts like Tailored CV or markdown lines."""
     text = re.sub(r"(?i)tailored\s*(cv|resume)", "", text)
     text = re.sub(r"[-_=]{2,}", "", text)
     return text.strip()
-
 
 def create_docx(cv_text: str, target_name: str):
     """Generate a DOCX CV."""
@@ -75,7 +74,6 @@ def create_docx(cv_text: str, target_name: str):
     buffer.seek(0)
     return buffer
 
-
 def create_pdf(cv_text: str, target_name: str):
     """Generate a PDF CV."""
     buffer = BytesIO()
@@ -108,7 +106,6 @@ def create_pdf(cv_text: str, target_name: str):
 def home():
     return send_from_directory(".", "index.html")
 
-
 @app.route("/generate", methods=["POST"])
 def generate_cv():
     try:
@@ -118,36 +115,31 @@ def generate_cv():
         target_name = (data.get("target_name") or "").strip()
         file_format = (data.get("file_format") or "docx").lower()
 
-        # ✅ Require target_name explicitly
-        if not target_name:
-            return jsonify({"error": "Missing 'target_name' — please enter Target Job Title."}), 400
+        if not old_cv or not job_desc or not target_name:
+            return jsonify({"error": "Missing one or more fields: old_cv, job_desc, or target_name"}), 400
 
-        if not old_cv or not job_desc:
-            return jsonify({"error": "Missing 'old_cv' or 'job_desc'"}), 400
+        print(f"🧩 Received target_name: {repr(target_name)} | file_format: {file_format}")
 
-        print("🧩 Received target_name:", repr(target_name))
-        print("🧩 File format:", file_format)
-
-        # ----------------- PROMPT -----------------
+        # ----------------- FULL PROFESSIONAL PROMPT -----------------
         prompt = f"""
 You are a highly skilled resume writer specializing in Applicant Tracking System (ATS) optimization and crafting compelling narratives for mid-career to executive-level professionals. 
 Your task is to rewrite the provided CV to not only align with the given job description but also to significantly improve its impact and persuasiveness for a human reader. 
 Prioritize clarity, quantifiable achievements expressed with powerful action verbs, and the strategic integration of relevant keywords to ensure the CV is both ATS-friendly and compelling.
 
-The output should strictly adhere to the following structure, using either Tahoma, Arial, or Times New Roman font (plain text only):
+The output should strictly adhere to the following structure, using either Tahoma, Arial, or Times New Roman font (though ultimately, plain text will be output): 
 ============================
 FULL NAME
 LOCATION | CONTACT INFO | EMAIL | LINKEDIN
 
 Summary
-[Concise 2–3 line summary highlighting key strengths most relevant to the job.]
+[Concise 2–3 line summary designed to hook the reader, highlighting key strengths most relevant to the job.]
 
 Key Skills
-- [List 8–12 key skills with job-specific keywords.]
+- [List 8–12 carefully chosen key skills with relevant keywords and measurable context.]
 
 Professional Experience
 [Company Name], [Job Title] | [Dates of Employment]
-- [3–5 bullet points quantifying results and achievements.]
+- [3–5 bullet points quantifying results and achievements using the STAR method.]
 
 Education
 [Degree], [Institution], [Graduation Year (or GPA if above 3.5)]
@@ -156,7 +148,7 @@ Certifications
 [List relevant certifications]
 
 Additional Information (Optional)
-[Languages, Awards, Tools, or Publications relevant to the job.]
+[Languages, Awards, Publications, or Tools directly relevant to the job.]
 ============================
 
 INPUT:
@@ -164,8 +156,8 @@ JOB DESCRIPTION: {job_desc}
 CURRENT CV: {old_cv}
 
 OUTPUT:
-Provide only the rewritten CV in plain text. No markdown or explanations. 
-Focus on measurable results, strong verbs, and clarity.
+Provide only the rewritten CV in plain text — no markdown, explanations, or filler text. 
+Focus on precision, clarity, and measurable results.
 """
 
         # ----------------- OPENAI CALL -----------------
@@ -178,33 +170,27 @@ Focus on measurable results, strong verbs, and clarity.
         updated_cv = clean_ai_output(response.choices[0].message.content.strip())
 
         # ----------------- GENERATE FILE -----------------
+        clean_name = target_name.strip().title()
+        filename = f"{clean_name.replace(' ', '_')}.{file_format}"
+
         if file_format == "pdf":
-            buffer = create_pdf(updated_cv, target_name)
-            filename = f"{target_name.replace(' ', '_')}.pdf"
+            buffer = create_pdf(updated_cv, clean_name)
             mimetype = "application/pdf"
         else:
-            buffer = create_docx(updated_cv, target_name)
-            filename = f"{target_name.replace(' ', '_')}.docx"
+            buffer = create_docx(updated_cv, clean_name)
             mimetype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
-        print("✅ Final filename:", filename)
+        print(f"✅ Final filename: {filename}")
 
-        return send_file(
-            buffer,
-            as_attachment=True,
-            download_name=filename,
-            mimetype=mimetype,
-        )
+        return send_file(buffer, as_attachment=True, download_name=filename, mimetype=mimetype)
 
     except Exception as e:
         print("❌ Backend error:", e)
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "message": "Backend running fine"})
-
 
 # ------------------------------------------
 # MAIN
