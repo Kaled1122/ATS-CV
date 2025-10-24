@@ -13,42 +13,48 @@
     </h1>
 
     <div class="space-y-5">
+      <input id="target" type="text" placeholder="Enter Target Job Title (e.g. Instructional Designer)" class="w-full p-3 border rounded-md" />
       <textarea id="cv" rows="8" placeholder="Paste your current CV..." class="w-full p-3 border rounded-md"></textarea>
       <textarea id="job" rows="6" placeholder="Paste job description..." class="w-full p-3 border rounded-md"></textarea>
 
-      <button id="generate" class="w-full bg-blue-600 text-white py-3 rounded-md font-semibold hover:bg-blue-700 transition">
-        Generate CV
-      </button>
+      <div class="flex gap-4">
+        <button id="generate-docx" class="flex-1 bg-blue-600 text-white py-3 rounded-md font-semibold hover:bg-blue-700 transition">
+          Generate Word (.docx)
+        </button>
+        <button id="generate-pdf" class="flex-1 bg-green-600 text-white py-3 rounded-md font-semibold hover:bg-green-700 transition">
+          Generate PDF (.pdf)
+        </button>
+      </div>
 
       <p id="status" class="text-center text-gray-500 mt-3"></p>
     </div>
   </div>
 
   <script>
-    // ✅ Your backend URL on Railway
     const apiBase = "https://ats-cv-production.up.railway.app";
 
-    document.getElementById("generate").addEventListener("click", async () => {
+    async function generate(file_format) {
       const old_cv = document.getElementById("cv").value.trim();
       const job_desc = document.getElementById("job").value.trim();
+      const target_name = document.getElementById("target").value.trim();
       const status = document.getElementById("status");
 
-      if (!old_cv || !job_desc) {
-        status.textContent = "⚠️ Please fill in both fields.";
+      if (!old_cv || !job_desc || !target_name) {
+        status.textContent = "⚠️ Please fill in all fields (CV, Job Description, and Target Name).";
         return;
       }
 
-      status.textContent = "⏳ Generating your tailored CV...";
+      status.textContent = `⏳ Generating your ${file_format.toUpperCase()} CV...`;
 
       try {
         const response = await fetch(`${apiBase}/generate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ old_cv, job_desc })
+          body: JSON.stringify({ old_cv, job_desc, target_name, file_format })
         });
 
         if (!response.ok) {
-          status.textContent = "❌ Error generating CV.";
+          status.textContent = "❌ Error generating CV. Check backend logs.";
           return;
         }
 
@@ -56,17 +62,18 @@
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        const filename = response.headers
-          .get("Content-Disposition")
-          ?.match(/filename=\"(.+)\"/)?.[1] || "Tailored_CV.docx";
+        const filename = response.headers.get("Content-Disposition")?.match(/filename=\"(.+)\"/)?.[1] || `Updated_CV.${file_format}`;
         a.download = filename;
         a.click();
-        status.textContent = "✅ CV ready and downloaded!";
+        status.textContent = `✅ ${file_format.toUpperCase()} CV ready and downloaded!`;
       } catch (err) {
         console.error(err);
         status.textContent = "❌ Something went wrong.";
       }
-    });
+    }
+
+    document.getElementById("generate-docx").addEventListener("click", () => generate("docx"));
+    document.getElementById("generate-pdf").addEventListener("click", () => generate("pdf"));
   </script>
 </body>
 </html>
