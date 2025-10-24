@@ -13,20 +13,29 @@
     </h1>
 
     <div class="space-y-5">
-      <!-- ✅ Input for Target Job Title -->
-      <input id="target_name" type="text" placeholder="Enter Target Job Title (e.g. Instructional Designer)" class="w-full p-3 border rounded-md" />
+      <!-- ✅ Target Job Title (must match 'target_name' in backend) -->
+      <input id="target_name" type="text"
+        placeholder="Enter Target Job Title (e.g. Instructional Designer)"
+        class="w-full p-3 border rounded-md" />
 
       <!-- ✅ Current CV -->
-      <textarea id="cv" rows="8" placeholder="Paste your current CV..." class="w-full p-3 border rounded-md"></textarea>
+      <textarea id="cv" rows="8"
+        placeholder="Paste your current CV..."
+        class="w-full p-3 border rounded-md"></textarea>
 
       <!-- ✅ Job Description -->
-      <textarea id="job" rows="6" placeholder="Paste job description..." class="w-full p-3 border rounded-md"></textarea>
+      <textarea id="job" rows="6"
+        placeholder="Paste job description..."
+        class="w-full p-3 border rounded-md"></textarea>
 
+      <!-- ✅ Buttons -->
       <div class="flex gap-4">
-        <button id="generate-docx" class="flex-1 bg-blue-600 text-white py-3 rounded-md font-semibold hover:bg-blue-700 transition">
+        <button id="generate-docx"
+          class="flex-1 bg-blue-600 text-white py-3 rounded-md font-semibold hover:bg-blue-700 transition">
           Generate Word (.docx)
         </button>
-        <button id="generate-pdf" class="flex-1 bg-green-600 text-white py-3 rounded-md font-semibold hover:bg-green-700 transition">
+        <button id="generate-pdf"
+          class="flex-1 bg-green-600 text-white py-3 rounded-md font-semibold hover:bg-green-700 transition">
           Generate PDF (.pdf)
         </button>
       </div>
@@ -36,12 +45,12 @@
   </div>
 
   <script>
-    const apiBase = "https://ats-cv-production.up.railway.app"; // ✅ Your backend
+    const apiBase = "https://ats-cv-production.up.railway.app"; // ✅ Backend URL
 
     async function generate(file_format) {
       const old_cv = document.getElementById("cv").value.trim();
       const job_desc = document.getElementById("job").value.trim();
-      const target_name = document.getElementById("target_name").value.trim(); // ✅ matches backend field name
+      const target_name = document.getElementById("target_name").value.trim();
       const status = document.getElementById("status");
 
       if (!old_cv || !job_desc || !target_name) {
@@ -55,27 +64,25 @@
         const response = await fetch(`${apiBase}/generate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            old_cv,
-            job_desc,
-            target_name, // ✅ send this to backend
-            file_format
-          })
+          body: JSON.stringify({ old_cv, job_desc, target_name, file_format }) // ✅ matches backend
         });
 
         if (!response.ok) {
-          const err = await response.text();
-          status.textContent = "❌ Error generating CV: " + err;
+          const errText = await response.text();
+          status.textContent = "❌ Server Error: " + errText;
           return;
         }
 
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        const filename = response.headers.get("Content-Disposition")?.match(/filename=\"(.+)\"/)?.[1] || `Updated_CV.${file_format}`;
+        const cd = response.headers.get("Content-Disposition");
+        const filename = (cd && /filename="(.+?)"/.exec(cd)?.[1]) ||
+                         `Updated_CV.${file_format}`;
         a.download = filename;
         a.click();
+
         status.textContent = `✅ ${file_format.toUpperCase()} CV ready and downloaded!`;
       } catch (err) {
         console.error(err);
