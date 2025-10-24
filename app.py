@@ -76,7 +76,6 @@ def generate_cv():
         response = client.chat.completions.create(
             model="gpt-5",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.4,
         )
         updated_cv = response.choices[0].message.content.strip()
     except Exception as e:
