@@ -25,7 +25,8 @@
   </div>
 
   <script>
-    const apiBase = window.location.origin; // works locally or on Railway
+    // ✅ Your backend URL on Railway
+    const apiBase = "https://ats-cv-production.up.railway.app";
 
     document.getElementById("generate").addEventListener("click", async () => {
       const old_cv = document.getElementById("cv").value.trim();
@@ -55,7 +56,9 @@
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        const filename = response.headers.get("Content-Disposition")?.match(/filename=\"(.+)\"/)?.[1] || "Tailored_CV.docx";
+        const filename = response.headers
+          .get("Content-Disposition")
+          ?.match(/filename=\"(.+)\"/)?.[1] || "Tailored_CV.docx";
         a.download = filename;
         a.click();
         status.textContent = "✅ CV ready and downloaded!";
