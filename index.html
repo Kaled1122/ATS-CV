@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ATS CV Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
+    <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">
+      ATS-Friendly CV Generator
+    </h1>
+
+    <div class="space-y-5">
+      <textarea id="cv" rows="8" placeholder="Paste your current CV..." class="w-full p-3 border rounded-md"></textarea>
+      <textarea id="job" rows="6" placeholder="Paste job description..." class="w-full p-3 border rounded-md"></textarea>
+
+      <button id="generate" class="w-full bg-blue-600 text-white py-3 rounded-md font-semibold hover:bg-blue-700 transition">
+        Generate CV
+      </button>
+
+      <p id="status" class="text-center text-gray-500 mt-3"></p>
+    </div>
+  </div>
+
+  <script>
+    const apiBase = window.location.origin; // works locally or on Railway
+
+    document.getElementById("generate").addEventListener("click", async () => {
+      const old_cv = document.getElementById("cv").value.trim();
+      const job_desc = document.getElementById("job").value.trim();
+      const status = document.getElementById("status");
+
+      if (!old_cv || !job_desc) {
+        status.textContent = "⚠️ Please fill in both fields.";
+        return;
+      }
+
+      status.textContent = "⏳ Generating your tailored CV...";
+
+      try {
+        const response = await fetch(`${apiBase}/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ old_cv, job_desc })
+        });
+
+        if (!response.ok) {
+          status.textContent = "❌ Error generating CV.";
+          return;
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const filename = response.headers.get("Content-Disposition")?.match(/filename=\"(.+)\"/)?.[1] || "Tailored_CV.docx";
+        a.download = filename;
+        a.click();
+        status.textContent = "✅ CV ready and downloaded!";
+      } catch (err) {
+        console.error(err);
+        status.textContent = "❌ Something went wrong.";
+      }
+    });
+  </script>
+</body>
+</html>
