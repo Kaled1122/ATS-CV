@@ -26,15 +26,16 @@ client = OpenAI(api_key=OPENAI_KEY)
 # HELPERS
 # ------------------------------------------
 def clean_ai_output(text: str) -> str:
-    """Clean unwanted artifacts like Tailored CV or markdown lines."""
+    """Clean unwanted artifacts like 'Tailored CV' or markdown lines."""
     text = re.sub(r"(?i)tailored\s*(cv|resume)", "", text)
     text = re.sub(r"[-_=]{2,}", "", text)
     return text.strip()
 
+
 def create_docx(cv_text: str, target_name: str):
     """Generate a DOCX CV."""
     doc = Document()
-    clean_title = target_name.strip().replace("_", " ")
+    clean_title = target_name.strip().title().replace("_", " ")
 
     # Title
     title_para = doc.add_paragraph()
@@ -74,10 +75,11 @@ def create_docx(cv_text: str, target_name: str):
     buffer.seek(0)
     return buffer
 
+
 def create_pdf(cv_text: str, target_name: str):
     """Generate a PDF CV."""
     buffer = BytesIO()
-    clean_title = target_name.strip().replace("_", " ")
+    clean_title = target_name.strip().title().replace("_", " ")
     styles = getSampleStyleSheet()
 
     pdf = SimpleDocTemplate(buffer, pagesize=A4)
@@ -106,17 +108,25 @@ def create_pdf(cv_text: str, target_name: str):
 def home():
     return send_from_directory(".", "index.html")
 
+
 @app.route("/generate", methods=["POST"])
 def generate_cv():
     try:
         data = request.get_json(force=True)
         old_cv = data.get("old_cv", "").strip()
         job_desc = data.get("job_desc", "").strip()
-        target_name = data.get("target_name", "").strip() or "Updated_CV"
-        file_format = data.get("file_format", "docx").lower()
+        target_name = (data.get("target_name") or "").strip()
+        file_format = (data.get("file_format") or "docx").lower()
+
+        # ✅ Require target_name explicitly
+        if not target_name:
+            return jsonify({"error": "Missing 'target_name' — please enter Target Job Title."}), 400
 
         if not old_cv or not job_desc:
             return jsonify({"error": "Missing 'old_cv' or 'job_desc'"}), 400
+
+        print("🧩 Received target_name:", repr(target_name))
+        print("🧩 File format:", file_format)
 
         # ----------------- PROMPT -----------------
         prompt = f"""
@@ -130,10 +140,10 @@ FULL NAME
 LOCATION | CONTACT INFO | EMAIL | LINKEDIN
 
 Summary
-[Concise 2-3 line summary highlighting key strengths most relevant to the job.]
+[Concise 2–3 line summary highlighting key strengths most relevant to the job.]
 
 Key Skills
-- [List 8-12 key skills with job-specific keywords.]
+- [List 8–12 key skills with job-specific keywords.]
 
 Professional Experience
 [Company Name], [Job Title] | [Dates of Employment]
@@ -154,8 +164,8 @@ JOB DESCRIPTION: {job_desc}
 CURRENT CV: {old_cv}
 
 OUTPUT:
-Provide only the rewritten CV in plain text, no markdown or explanations. 
-Focus on measurable results and clarity.
+Provide only the rewritten CV in plain text. No markdown or explanations. 
+Focus on measurable results, strong verbs, and clarity.
 """
 
         # ----------------- OPENAI CALL -----------------
@@ -177,15 +187,24 @@ Focus on measurable results and clarity.
             filename = f"{target_name.replace(' ', '_')}.docx"
             mimetype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
-        return send_file(buffer, as_attachment=True, download_name=filename, mimetype=mimetype)
+        print("✅ Final filename:", filename)
+
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype=mimetype,
+        )
 
     except Exception as e:
         print("❌ Backend error:", e)
         return jsonify({"error": str(e)}), 500
 
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "message": "Backend running fine"})
+
 
 # ------------------------------------------
 # MAIN
